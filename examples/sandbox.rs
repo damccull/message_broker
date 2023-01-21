@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, any::TypeId};
 
 use message_broker::Handle;
 
@@ -6,7 +6,7 @@ use message_broker::Handle;
 async fn main() -> Result<(), anyhow::Error> {
     let handle = Handle::new();
     handle.publish(Arc::new("Test".to_string())).await?;
-    handle.subscribe().await?;
+    handle.subscribe(TypeId::of::<String>()).await?;
 
     Ok(())
 

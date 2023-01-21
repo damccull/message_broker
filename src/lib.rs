@@ -1,6 +1,10 @@
-use std::{any::{TypeId, Any}, collections::HashMap, sync::{Arc, mpsc::Sender}};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    sync::mpsc::Sender, error::Report,
+};
 
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 pub struct Actor {
     receiver: mpsc::Receiver<MessageBrokerControlMessage>,
@@ -16,12 +20,17 @@ impl Actor {
     }
 
     fn handle_message(&self, message: MessageBrokerControlMessage) {
-        match message {
+        match &message {
             MessageBrokerControlMessage::Publish(m) => {
                 dbg!(m);
             }
-            MessageBrokerControlMessage::Subscribe => {
-                dbg!(message);
+            MessageBrokerControlMessage::Subscribe {
+                type_id,
+                respond_to,
+            } => {
+                dbg!(&message,&type_id);
+                let (tx,rx) = mpsc::channel(10);
+                respond_to.send(Box::new(rx));
             }
         }
     }
@@ -45,10 +54,10 @@ impl Handle {
     where
         MessageType: Any + Send + Sync,
     {
-        let arced = Arc::new(message);
+        let boxed = Box::new(message);
         let x = self
             .sender
-            .send(MessageBrokerControlMessage::Publish(arced))
+            .send(MessageBrokerControlMessage::Publish(boxed))
             .await;
 
         if x.is_err() {
@@ -58,10 +67,14 @@ impl Handle {
         Ok(())
     }
 
-    pub async fn subscribe(&self) -> Result<(), anyhow::Error> {
+    pub async fn subscribe(&self, message_type: TypeId) -> Result<(), anyhow::Error> {
+        let (tx, rx) = oneshot::channel();
         let x = self
             .sender
-            .send(MessageBrokerControlMessage::Subscribe)
+            .send(MessageBrokerControlMessage::Subscribe {
+                type_id: TypeId::of::<TestEvent>(),
+                respond_to: tx,
+            })
             .await;
 
         if x.is_err() {
@@ -80,8 +93,17 @@ pub async fn run_actor(mut actor: Actor) {
 
 #[derive(Debug)]
 pub enum MessageBrokerControlMessage {
-    Publish(Arc<dyn Any + Send + Sync>),
-    Subscribe,
+    Publish(Box<dyn Any + Send + Sync>),
+    Subscribe {
+        type_id: TypeId,
+        respond_to: oneshot::Sender<mpsc::Receiver<Box<dyn Any + Send + Sync>>>,
+    },
+}
+
+#[derive(Debug)]
+pub enum TestEvent {
+    A,
+    B,
 }
 
 #[cfg(test)]
