@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "sandbox"
 path = "examples/sandbox.rs"
 
+[[example]]
+name = "polyshill"
+path = "examples/polyshill.rs"
+
 [dependencies]
 anyhow = "1.0.68"
 anymap = "0.12.1"
