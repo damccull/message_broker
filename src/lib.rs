@@ -1,7 +1,7 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
-    sync::mpsc::Sender, error::Report,
+    sync::mpsc::Sender,
 };
 
 use tokio::sync::{mpsc, oneshot};
@@ -29,8 +29,8 @@ impl Actor {
                 respond_to,
             } => {
                 dbg!(&message,&type_id);
-                let (tx,rx) = mpsc::channel(10);
-                respond_to.send(Box::new(rx));
+                // let (tx,rx) = mpsc::channel(10);
+                // respond_to.send(Box::new(rx));
             }
         }
     }
